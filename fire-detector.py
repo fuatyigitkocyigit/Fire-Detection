@@ -6,12 +6,12 @@ Description: This program detects fire in a video file or a webcam stream.
 This project is prepared for CMPE326 - Multimedia Course at TED University and will also
 be presented at the 2023 GBYF (Genç Beyinler Yeni Fikirler) in Ankara, Turkey.
 '''
+import threading
 
 import cv2
 import numpy as np
 import smtplib
 import playsound
-import threading
 import time
 import pygame as pygame
 
@@ -59,6 +59,13 @@ def start_configuration():
     while True:
         #print the time passed after every 1 second
         print("Time: "+ str(time.time() - start_time))
+
+        # If 10 seconds have passed, increase the sensitivity level
+        if time.time() - start_time > 10:
+            sensitivity_level = sensitivity_level * 75/100
+            print("Sensitivity increased %25 and new level is set to {}".format(sensitivity_level))
+            start_time = time.time()
+            continue
 
         # Read frames from both video sources
         grabbed1, frame1 = video.read()
@@ -111,7 +118,7 @@ def start_configuration():
         # If fire is reported, start the alarm and send an email
         if Fire_Reported >= 1:
             if not Alarm_Status:
-                threading.Thread(target=play_alarm_sound_function).start()
+                #threading.Thread(target=play_alarm_sound_function).start()
                 Alarm_Status = True
                 print("Was that a correct detection? (Type *y* for Yes and *n* for No)")
                 choice = input()
@@ -126,22 +133,12 @@ def start_configuration():
                     configuration_completed = False
                 elif choice == 'y':
                     print("The configuration is completed. The system will now start detecting fire with the detected sensitivity level.")
-                    start_time = 0
+                    start_time = time.time()
                     Fire_Reported = 0
                     Alarm_Status = False
                     Email_Status = False
                     configuration_completed = True
-
-            if not Email_Status:
-                threading.Thread(target=send_mail_function).start()
-                Email_Status = True
-
-        # If 10 seconds have passed, increase the sensitivity level
-        if time.time() - start_time > 10:
-            sensitivity_level = sensitivity_level * 75/100
-            print("Sensitivity increased %25 and new level is set to {}".format(sensitivity_level))
-            start_time = time.time()
-            start_configuration()
+                    break
 
         # If 'q' is pressed on the keyboard, stop the program
         if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -151,6 +148,9 @@ def start_configuration():
             break
 
         time.sleep(0.25)
+
+    print("Configuration completed")
+    return 0
 
 def start_detector():
     global sensitivity_level
@@ -228,8 +228,6 @@ def start_detector():
             break
 
         time.sleep(3)
-
-
 
 print("Welcome to Fire Detection System")
 print("For our system, we have two options for you to choose from:")
