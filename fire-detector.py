@@ -6,18 +6,24 @@ Description: This program detects fire in a video file or a webcam stream.
 This project is prepared for CMPE326 - Multimedia Course at TED University and will also
 be presented at the 2023 GBYF (Genç Beyinler Yeni Fikirler) in Ankara, Turkey.
 '''
+import os
 import threading
-
 import cv2
 import numpy as np
 import smtplib
 import playsound
 import time
 import pygame as pygame
+from twilio.rest import Client
+from datetime import datetime
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.image import MIMEImage
 
 # Flag variables to monitor the status of alarm and email
 Alarm_Status = False
 Email_Status = False
+Wp_Status = False
 Fire_Reported = 0
 sensitivity_level = 15000
 start_time = 0
@@ -33,27 +39,47 @@ def play_alarm_sound_function():
     #playsound.playsound('alarm-sound.mp3', True)
 
 # This function will send an email alert
-def send_mail_function():
-    recipientEmail = "Enter_Recipient_Email"
-    recipientEmail = recipientEmail.lower()
+def send_mail_function(image_path):
+    msg = MIMEMultipart()
+    msg['Subject'] = 'Fire Alert!'
+    msg['From'] = 'your_email@gmail.com'
+    msg['To'] = 'recipient_email@gmail.com'
 
-    try:
-        # Set up a server for sending an email
-        server = smtplib.SMTP('smtp.gmail.com', 587)
-        server.ehlo()
-        server.starttls()
-        server.login("Enter_Your_Email (System Email)", 'Enter_Your_Email_Password (System Email')
-        server.sendmail('Enter_Your_Email (System Email)', recipientEmail, "Warning A Fire Accident has been reported on ABC Company")
-        print("sent to {}".format(recipientEmail))
-        server.close()
-    except Exception as e:
-        print(e)
+    text = MIMEText("Warning! A Fire Accident has been reported on ABC Company.")
+    msg.attach(text)
+
+    with open(image_path, 'rb') as f:
+        img = MIMEImage(f.read())
+
+    msg.attach(img)
+
+    s = smtplib.SMTP('smtp.gmail.com', 587)
+    s.ehlo()
+    s.starttls()
+    s.login('your_email@gmail.com', 'your_password')
+    s.sendmail('your_email@gmail.com', 'recipient_email@gmail.com', msg.as_string())
+    s.quit()
+
+def send_whatsapp_alert(image_url):
+    account_sid = 'your_account_sid'
+    auth_token = 'your_auth_token'
+    client = Client(account_sid, auth_token)
+
+    message = client.messages.create(
+        from_='whatsapp:+14155238886',  # This number is provided by Twilio
+        body='Fire Detected!',
+        to='whatsapp:+xxx',
+        media_url = [image_url]
+    )
+
+    print(message.sid)
 
 def start_configuration():
     global sensitivity_level
     global Fire_Reported
     global Alarm_Status
     global Email_Status
+    global Wp_Status
     global start_time
     global configuration_completed
     while True:
@@ -157,7 +183,13 @@ def start_detector():
     global Fire_Reported
     global Alarm_Status
     global Email_Status
+    global Wp_Status
     global start_time
+
+    # Create 'output' directory if it doesn't exist
+    if not os.path.exists('output'):
+        os.makedirs('output')
+
     while True:
         print("The fire detection system is active and watching...")
         print("Active time: "+ str(time.time() - start_time))
@@ -198,6 +230,10 @@ def start_detector():
             print("!!!")
             print("Fire Detected!")
             print("!!!")
+            # Save the frame
+            timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            cv2.imwrite(f'output/fire_{timestamp}.png', frame1)
+            cv2.waitKey(1)
 
         # Concatenate frames horizontally
         combined_frame = np.hstack((output, frame1))
@@ -220,12 +256,23 @@ def start_detector():
                 Alarm_Status = True
 
             if not Email_Status:
-                threading.Thread(target=send_mail_function).start()
+                print("Email is not set up. When setup is complete, email will be sent here.")
+                #threading.Thread(target=send_mail_function).start()
                 Email_Status = True
+
+            if not Wp_Status:
+                print("Whatsapp is not set up. When setup is complete, Whatsapp message will be sent here.")
+                #threading.Thread(target=send_whatsapp_alert).start()
+                Wp_Status = True
 
         # If 'q' is pressed on the keyboard, stop the program
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
+
+        Alarm_Status = False
+        Email_Status = False
+        Wp_Status = False
+        Fire_Reported = 0
 
         time.sleep(3)
 
