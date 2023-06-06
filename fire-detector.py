@@ -6,6 +6,7 @@ Description: This program detects fire in a video file or a webcam stream.
 This project is prepared for CMPE326 - Multimedia Course at TED University and will also
 be presented at the 2023 GBYF (Genç Beyinler Yeni Fikirler) in Ankara, Turkey.
 '''
+
 import os
 import threading
 import cv2
@@ -60,6 +61,7 @@ def send_mail_function(image_path):
     s.sendmail('your_email@gmail.com', 'recipient_email@gmail.com', msg.as_string())
     s.quit()
 
+# This function will send a whatsapp alert
 def send_whatsapp_alert(image_url):
     account_sid = 'your_account_sid'
     auth_token = 'your_auth_token'
