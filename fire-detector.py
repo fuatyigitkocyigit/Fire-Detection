@@ -26,7 +26,7 @@ Alarm_Status = False
 Email_Status = False
 Wp_Status = False
 Fire_Reported = 0
-sensitivity_level = 15000
+sensitivity_level = 15000 #Higher is less sensitive
 start_time = 0
 configuration_completed = False
 
